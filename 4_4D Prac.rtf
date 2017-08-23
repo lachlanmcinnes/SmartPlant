@@ -1,0 +1,316 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1348\cocoasubrtf170
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural
+
+\f0\fs24 \cf0 \
+\
+//Libraries\
+//-------SD CARD--------\
+#include "SD.h"\
+#include <Wire.h>\
+#include "RTClib.h"\
+\
+//-------LUX SENSOR-----\
+#include <Adafruit_Sensor.h>\
+#include <Adafruit_TSL2561_U.h>\
+\
+\
+//-------HUMIDITY SENSOR------\
+#include <DHT.h>\
+\
+\
+//------MOISTURE SENSOR-------\
+\
+\
+\
+//------LED LIGHT------------\
+\
+\
+//Definitions\
+//-------SD CARD----------\
+#define LOG_INTERVAL  1000 // mills between entries. \
+#define SYNC_INTERVAL 1000 // mills between calls to flush() - to write data to the card\
+uint32_t syncTime = 0; // time of last sync()\
+#define ECHO_TO_SERIAL   1 // echo data to serial port. \
+\
+//-------LUX SENSOR---------\
+Adafruit_TSL2561_Unified tsl = Adafruit_TSL2561_Unified(TSL2561_ADDR_FLOAT, 12345);\
+\
+//--------HUMIDITY SENSOR--------\
+#define DHTPIN 2     // what pin we're connected to\
+#define DHTTYPE DHT22   // DHT 22  (AM2302)\
+DHT dht(DHTPIN, DHTTYPE);\
+\
+//-------MOISTURE SENSOR---------\
+\
+\
+//-------LED LIGHT------------\
+\
+\
+//Variables\
+//------SD CARD------\
+RTC_PCF8523 RTC; // define the Real Time Clock object\
+const int chipSelect = 10;\
+File logfile;\
+\
+\
+//------LUX SENSOR------\
+\
+\
+//------HUMIDITY SENSOR-------\
+float hum;  //Stores humidity value\
+float temp; //Stores temperature value\
+\
+//------MOISTURE SENSOR--------\
+float moistPercentage = moistPercentage;\
+\
+//------LED LIGHT---------\
+\
+\
+\
+\
+void setup()\
+\{\
+  Serial.begin(9600);\
+  //-----SD CARD------\
+  // initialize the SD card\
+  initSDcard();\
+\
+  // create a new file\
+  createFile();\
+\
+  //initRTC();\
+\
+  logfile.println("millis,stamp,datetime,humidity,temperature,lux,moisture");\
+#if ECHO_TO_SERIAL\
+  Serial.println("millis,stamp,datetime,humidity,temperature,lux,moisture");\
+#endif //ECHO_TO_SERIAL\
+\
+  pinMode(2, INPUT);\
+\
+  //------LUX SENSOR-------\
+  displaySensorDetails();\
+  configureSensor();\
+\
+  //------HUMIDITY SENSOR------\
+  dht.begin();\
+\
+  //------MOISTURE SENSOR--------\
+\
+\
+  //------LED LIGHT-----------\
+\
+  \
+\}\
+\
+void loop()\
+\{\
+  DateTime now;\
+\
+  // delay for the amount of time we want between readings\
+  delay((LOG_INTERVAL - 1) - (millis() % LOG_INTERVAL));\
+\
+  // log milliseconds since starting\
+  uint32_t m = millis();\
+  logfile.print(m);           // milliseconds since start\
+  logfile.print(", ");\
+#if ECHO_TO_SERIAL\
+  Serial.print(m);         // milliseconds since start\
+  Serial.print(", ");\
+#endif\
+\
+  // fetch the time\
+  now = RTC.now();\
+  // log time\
+  logfile.print(now.unixtime()); // seconds since 2000\
+  logfile.print(", ");\
+  logfile.print(now.year(), DEC);\
+  logfile.print("/");\
+  logfile.print(now.month(), DEC);\
+  logfile.print("/");\
+  logfile.print(now.day(), DEC);\
+  logfile.print(" ");\
+  logfile.print(now.hour(), DEC);\
+  logfile.print(":");\
+  logfile.print(now.minute(), DEC);\
+  logfile.print(":");\
+  logfile.print(now.second(), DEC);\
+#if ECHO_TO_SERIAL\
+  Serial.print(now.unixtime()); // seconds since 2000\
+  Serial.print(", ");\
+  Serial.print(now.year(), DEC);\
+  Serial.print("/");\
+  Serial.print(now.month(), DEC);\
+  Serial.print("/");\
+  Serial.print(now.day(), DEC);\
+  Serial.print(" ");\
+  Serial.print(now.hour(), DEC);\
+  Serial.print(":");\
+  Serial.print(now.minute(), DEC);\
+  Serial.print(":");\
+  Serial.print(now.second(), DEC);\
+#endif //ECHO_TO_SERIAL\
+\
+  //Read the Humidity\
+  hum = dht.readHumidity();\
+\
+  logfile.print(", ");\
+  logfile.print(hum);\
+\
+#if ECHO_TO_SERIAL\
+  Serial.print(", ");\
+  Serial.print(hum);\
+\
+#endif //ECHO_TO_SERIAL\
+\
+  //Read Temperature\
+  temp = dht.readTemperature();\
+\
+  logfile.print(", ");\
+  logfile.print(temp);\
+\
+#if ECHO_TO_SERIAL\
+  Serial.print(", ");\
+  Serial.print(temp);\
+\
+#endif //ECHO_TO_SERIAL\
+\
+  //Read Lux\
+  sensors_event_t event;\
+  tsl.getEvent(&event);\
+\
+  logfile.print(", ");\
+  logfile.print(event.light);\
+\
+#if ECHO_TO_SERIAL\
+  Serial.print(", ");\
+  Serial.print(event.light);\
+\
+#endif //ECHO_TO_SERIAL\
+\
+  //Read Moisture\
+  int val;\
+  val = analogRead(0); //connect sensor to Analog 0\
+  moistPercentage = (float(val)/1023)*100;\
+\
+  logfile.print(", ");\
+  logfile.println(moistPercentage);\
+\
+#if ECHO_TO_SERIAL\
+  Serial.print(", ");\
+  Serial.println(moistPercentage);\
+\
+#endif //ECHO_TO_SERIAL\
+  \
+\
+  if ((millis() - syncTime) < SYNC_INTERVAL) return;\
+  syncTime = millis();\
+\
+  logfile.flush();\
+\}\
+\
+\
+//SD CARD VOIDS\
+void error(char const *str)\
+\{\
+  Serial.print("error: ");\
+  Serial.println(str);\
+\
+  while (1);\
+\}\
+\
+void initSDcard()\
+\{\
+  Serial.print("Initializing SD card...");\
+  // make sure that the default chip select pin is set to\
+  // output, even if you don't use it:\
+  //pinMode(10, OUTPUT);\
+  pinMode(10, OUTPUT);\
+\
+  // see if the card is present and can be initialized:\
+  if (!SD.begin(chipSelect)) \{\
+    Serial.println("Card failed, or not present");\
+    // don't do anything more:\
+    return;\
+  \}\
+  Serial.println("card initialized.");\
+\
+\}\
+\
+void createFile()\
+\{\
+  //file name must be in 8.3 format (name length at most 8 characters, follwed by a '.' and then a three character extension.\
+  char filename[] = "4_4D00.CSV";\
+  for (uint8_t i = 0; i < 100; i++) \{\
+    filename[4] = i / 10 + '0';\
+    filename[5] = i % 10 + '0';\
+    if (! SD.exists(filename)) \{\
+      // only open a new file if it doesn't exist\
+      logfile = SD.open(filename, FILE_WRITE);\
+      break;  // leave the loop!\
+    \}\
+  \}\
+\
+  if (! logfile) \{\
+    error("couldnt create file");\
+  \}\
+\
+  Serial.print("Logging to: ");\
+  Serial.println(filename);\
+\}\
+\
+void initRTC()\
+\{\
+  Wire.begin();\
+  if (!RTC.begin()) \{\
+    logfile.println("RTC failed");\
+#if ECHO_TO_SERIAL\
+    Serial.println("RTC failed");\
+#endif  //ECHO_TO_SERIAL\
+\
+  \}\
+\}\
+\
+\
+//LUX VOIDS  \
+void displaySensorDetails()\
+\{\
+  sensor_t sensor;\
+  tsl.getSensor(&sensor);\
+  Serial.println("------------------------------------");\
+  Serial.print  ("Sensor:       "); Serial.println(sensor.name);\
+  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);\
+  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);\
+  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" lux");\
+  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" lux");\
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" lux");  \
+  Serial.println("------------------------------------");\
+  Serial.println("");\
+  delay(1000);\
+\}\
+\
+void configureSensor()\
+\{\
+  /* You can also manually set the gain or enable auto-gain support */\
+  // tsl.setGain(TSL2561_GAIN_1X);      /* No gain ... use in bright light to avoid sensor saturation */\
+  // tsl.setGain(TSL2561_GAIN_16X);     /* 16x gain ... use in low light to boost sensitivity */\
+  tsl.enableAutoRange(true);            /* Auto-gain ... switches automatically between 1x and 16x */\
+  \
+  /* Changing the integration time gives you better sensor resolution (402ms = 16-bit data) */\
+  tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_13MS);      /* fast but low resolution */\
+  // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_101MS);  /* medium resolution and speed   */\
+  // tsl.setIntegrationTime(TSL2561_INTEGRATIONTIME_402MS);  /* 16-bit data but slowest conversions */\
+\
+  /* Update these values depending on what you've set above! */  \
+  Serial.println("------------------------------------");\
+  Serial.print  ("Gain:         "); Serial.println("Auto");\
+  Serial.print  ("Timing:       "); Serial.println("13 ms");\
+  Serial.println("------------------------------------");\
+\}\
+\
+\
+//Most of the main sections of code came from either standard libraries within Arduino or from Class Projects\
+\
+//Code was then modified to reflect the requirements of the Smart Gardening System}
